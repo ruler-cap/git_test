@@ -1,4 +1,4 @@
-Host github.com
-    HostName github.com
+Host 412891659@qq.com
+    HostName 412891659@qq.com
     User git
-    HostKeyAlias github.com
+    HostKeyAlias 412891659@qq.com
