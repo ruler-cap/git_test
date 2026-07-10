@@ -62,3 +62,36 @@
 2. 需要处理未知载荷时，直接对接同仓库支持的 2025 鲁棒惯性约束，而不是只靠降低速度或增大摩擦安全裕度。
 3. 需要应对飞来物、人员或快速移动障碍时，可把 Chen et al. 的 CBF + ACI 视为 MPC 之外的高速安全过滤层；这需要重新处理两个优化器之间的可行性和优先级，不能直接串联使用。
 4. 如果实时性优先于长时域预测，可将 Haviland et al. 的全身 QP 作为局部跟踪层，再由高层 MPC 给出末端或底盘参考。
+
+## 专题：高动态一体化底盘-上身控制与高精度末端任务
+
+本节针对以下更严格的目标筛选：
+
+- 底盘与上身进入同一优化变量或闭环控制器，而非串行“停车后操作”。
+- 支持快速运动、在线重规划、动态障碍或接触力扰动中的至少一项。
+- 末端具有明确的位姿连续跟踪、接触力控制、物体稳定或精细作业目标。
+
+### 优先级最高的工作
+
+| 匹配度 | 工作 | 平台与任务 | 核心方法 | 高动态与末端精度证据 | 发表时间与开源情况 |
+| --- | --- | --- | --- | --- | --- |
+| A | Minniti et al., *Whole-Body MPC for a Dynamically Stable Mobile Manipulator* | 带机械臂的球式动态平衡机器人（ballbot；单球滚动底盘）。同时进行平衡、末端 SE(3) 位姿跟踪和开门接触力操作。 | 以完整动力学建立**单一全身非线性 MPC**；在末端空间写入位置、姿态与接触力目标，预测它们对未来平衡的影响；关节/力矩约束以 relaxed log barrier 处理，使用 SLQ 求解。 | 这是“上身动作直接影响底盘稳定”的强耦合基准；末端目标同时包含 pose 与 force，而非只跟踪底盘路径。注意：球式底盘不是常见差速轮，但更能暴露高动态耦合问题。 | 2019-10，RA-L 4(4)。论文开放获取；论文专用配置未公开，但其 MPC 基础设施 [OCS2](https://github.com/leggedrobotics/ocs2) 开源。[论文](https://arxiv.org/abs/1902.10415) |
+| A | Pankert & Hutter, *Perceptive Model Predictive Control for Continuous Mobile Manipulation* | 轮式移动操作臂执行连续轨迹任务；利用视觉避障、触觉/力觉实现接触力控制，面向移动建造等需要末端持续精确作业的场景。 | 递推时域全身 MPC：直接跟踪末端任务空间参考，将视觉障碍、力觉交互、机械稳定与关节限位一并纳入约束。 | 任务目标就是连续末端轨迹和接触力，且系统可边移动边操作；作者报告相较采样式规划更快，并在多种实机平台验证。 | 2020-10，RA-L 5(4)。**论文配套软件开源**。[论文/项目](https://www.research-collection.ethz.ch/items/503d607c-b158-4f97-9c23-8ed95022d1bb)；[代码](https://github.com/leggedrobotics/perceptive_mpc) |
+| A | Minniti et al., *Model Predictive Robot-Environment Interaction Control for Mobile Manipulation Tasks* | 同一动态平衡移动操作臂执行开门、提起物体，并与未知刚度/动力学环境接触。 | 在全身 MPC 外接在线系统辨识与自适应控制，以修正未知机器人-环境交互模型；同时规划全身运动与接触力。 | 对高精度接触特别有价值：不必预先标定环境参数或反复人工调参，仍可稳定执行门把手/物体交互。 | 2021-05，ICRA。论文开放获取；可基于 [OCS2](https://github.com/leggedrobotics/ocs2) 复现方法基础，未发现论文专用开源配置。[论文](https://arxiv.org/abs/2106.04202) |
+| A | Spahn, Brito & Alonso-Mora, *Coupled Mobile Manipulation via Trajectory Optimization with Free Space Decomposition* | **非完整差速轮式**移动操作臂在杂乱、含动态障碍场景中执行取放；底盘与手臂联合规划。 | 递推时域全身轨迹优化 / MPC。用每个主要连杆周围的凸自由空间替代“每障碍物一条约束”，并预测动态障碍轨迹。 | 明确联合求解底盘与上臂；实验中相较解耦方案总执行时间降低 **48%**，且碰撞约束数量不随障碍数量增长，适合板端实时部署。末端是取放目标，而非高带宽力控。 | 2021-05，ICRA。论文开放获取；未发现官方代码。[论文](https://repository.tudelft.nl/record/uuid%3Ad901a4ce-f1c6-447c-99e2-8ced87264572) |
+| A | Du et al., *An Efficient Representation of Whole-body MPC for Online Compliant Dual-arm Mobile Manipulation* | EVA：**四麦克纳姆轮** 3-DoF 底盘 + 15-DoF 上身（胸、头、双臂）；在窄通道中取放/搬运、躲避动态障碍，并进行双末端柔顺交互。 | 双层连续 MPC。第一层以 B\'ezier 曲线在 SE(3) 规划双末端长时域轨迹；第二层用 B\'ezier 参数化全身轨迹并加入 predictive admittance、末端/底盘避障和硬约束。 | 底盘速度和上身位置命令来自同一连续轨迹；任务层 MPC 平均 **6.2 ms**，全身 MPC 约 **9-12.5 ms**，控制周期 20 ms；腕部力传感器支持末端力偏差到运动响应的闭环优化。 | 2024-10-30，arXiv 预印本。论文开放获取；未发现官方代码。[论文](https://arxiv.org/abs/2410.22910) |
+| A | Wang, Chen & Zhao, *Whole-Body MPC for Mobile Manipulation with Task Priority Transition* | 非完整移动操作臂抓门、开门、由底盘挡住自闭门并穿行；底盘与末端任务在执行中交接。 | 全身 MPC 将任务优先级和时间优先级合并为统一权重；预测时域内联合优化底盘和手臂，改善可操作度并平滑切换任务。 | 适合“底盘持续运动、末端保持高精度约束”的流程；项目报告单次计算 **4.3 ms**，并提高可操作度轨迹跟踪表现。 | 2025-05，ICRA。项目页提供论文和视频；未发现代码。[项目/论文](https://wbmpc.github.io/) |
+
+### 高价值补充
+
+| 工作 | 价值与边界 | 发表时间与开源情况 |
+| --- | --- | --- |
+| Wu et al., *Real-time Whole-body Motion Planning for Mobile Manipulators Using Environment-adaptive Search and Spatial-temporal Optimization*（REMANI-Planner） | 面向轮式移动操作臂的实时全身路径搜索和时空轨迹优化；把全身安全、敏捷性、动力学可行性和任务约束统一考虑。它更偏全局/局部轨迹生成，末端力控和物体动力学不如 `Keep it Upright` 完整，但可作为后者的高质量可行初值或上层规划器。 | 2024-05，ICRA。**完整代码开源，GPL-3.0**。[论文项目页](https://robotics-star.com/REMANI-Planner/)；[代码](https://github.com/Robotics-STAR-Lab/REMANI-Planner) |
+| Dietrich et al., *Whole-body Impedance Control of Wheeled Mobile Manipulators* | Rollin' Justin 的非完整轮式底盘与上身阻抗控制。通过底盘 admittance interface 和上/下身动力学耦合补偿，建立被动且渐近稳定的全身闭环。它不是高动态 MPC，但适合作为高精度柔顺接触的低层控制基座。 | 2016-03-01，Autonomous Robots 40(3)。论文作者稿可读；未发现代码。[论文](https://portal.fis.tum.de/de/publications/whole-body-impedance-control-of-wheeled-mobile-manipulators-stabi/) |
+| Chen et al., *Safe Expeditious Whole-Body Control of Mobile Manipulators for Collision Avoidance* | 对飞球、摆动障碍等快速外部扰动，CBF + ACI + QP 能给出反应很快的全身避障修正。它不负责末端物体平衡，但适合作为 `Keep it Upright` 的动态安全层候选。详见上一节。 | 2026-03 在线发表；论文开放获取，未发现代码。[论文](https://arxiv.org/abs/2409.14775) |
+
+### 对目标系统的落地判断
+
+如果你的优先级是“移动中托盘/未抓取物体不失稳”，`Keep it Upright` 仍是首选主线；其 2025 鲁棒扩展解决载荷惯性未知。若更强调“运动中精确接触、插接、打磨、喷涂或开门”，应优先研究 Pankert & Hutter (2020)、Minniti et al. (2019, 2021) 和 Du et al. (2024)。
+
+一个可行的工程组合是：`Keep it Upright` 的全身约束 MPC 管理底盘-手臂协同和物体稳定；采用 Pankert/Minniti 路线增加视觉、力觉与末端阻抗/导纳；使用 Chen et al. 的 CBF/ACI 作为短时域动态障碍安全层。三者直接叠加会产生约束冲突，实施时应在同一个 QP/MPC 中定义硬安全约束、软任务约束和优先级，而不是串联三个互不感知的控制器。
