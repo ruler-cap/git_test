@@ -42,3 +42,23 @@
 | 常规移动操作臂，多任务与约束 | HQP | 易于表达非完整约束、关节限位、避障与任务优先级。 |
 | 动态障碍、物体平衡、预测任务切换 | 约束 MPC / WBMPC | 能显式处理预测时域内的动力学、接触、碰撞和阶段任务。 |
 | 模型不准且任务分布可仿真 | 端到端 RL 或模型学习 | 可直接学习底盘-机械臂联合策略，但需要关注安全约束与 sim-to-real。 |
+
+## 与 Keep it Upright 最相近的扩展
+
+以下工作依据 `Keep it Upright` 的参考脉络及后续引用链筛选。优先保留“轮式移动操作臂 + 联合控制/规划 + 物体或环境约束”的工作；其中前两项最值得直接接续阅读。
+
+| 工作 | 任务与联合求解 | 核心方法 | 与 Keep it Upright 的关系 | 发表时间 | 开源情况与链接 |
+| --- | --- | --- | --- | --- | --- |
+| Heins & Schoellig, *Robust Nonprehensile Object Transportation with Uncertain Inertial Parameters* | 同为 waiter’s problem：移动操作臂托盘运输未抓取物体；对象质量、质心、惯量未知或误差很大时仍须避免滑动/倾倒。 | 在轨迹优化中加入对惯性参数不确定性的鲁棒平衡约束；用 moment relaxation 刻画给定包围几何体下物理可实现的惯性参数集合，并验证最坏情形约束满足。 | **最直接的后续工作**：从 2023 工作的动态避障与快速在线 MPC，扩展到未知载荷惯性的鲁棒运输。 | 2025-05，IEEE Robotics and Automation Letters 10(5) | **代码沿用并开源于 `upright`，MIT License**。[论文](https://arxiv.org/abs/2411.07079)；[代码](https://github.com/utiasDSL/upright) |
+| Haviland, Suenderhauf & Corke, *A Holistic Approach to Reactive Mobile Manipulation* | 9-DoF 轮式移动操作臂的闭环抓取、取放与末端跟踪；底盘和机械臂作为一个整体，避开关节位置/速度限制并保持可操纵性。 | 微分运动学 QP：以全身 Jacobian 联合分配底盘速度和关节速度；代价项最大化可操作度、限制底盘-末端相对朝向，并动态调整底盘/机械臂贡献。 | 同样追求快速反应和全身协同，但它是瞬时 QP，不显式预测物体平衡、摩擦或动态障碍。 | 2022-04，IEEE Robotics and Automation Letters 7(2) | **代码开源**，支持非完整和全向底盘。[论文](https://arxiv.org/abs/2109.04749)；[项目与代码](https://jhavl.github.io/holistic/) |
+| Rizzi et al., *Robust Sampling-Based Control of Mobile Manipulators for Interaction With Articulated Objects* | 10-DoF 移动操作臂操纵门、家具等可动铰接物体；需要协调底盘与机械臂，并应对接触模式切换和扰动。 | 采样式最优控制处理不可微接触动力学；结合 CBF 与 passivity theory，为安全和稳定提供约束/保证；可在 CPU 多线程实时部署。 | 与 `Keep it Upright` 一样处理“运动中物体/环境接触”和实时重规划，但采用采样控制而非梯度型 MPC，目标是铰接物体交互。 | 2023-06，IEEE Transactions on Robotics 39(3) | 作者明确公开通用多线程实现；论文页提供实现入口。[论文与项目](https://www.research-collection.ethz.ch/items/b348fad3-a20c-49ec-9811-bcd1aca83ccd) |
+| Chen et al., *Like a Martial Arts Dodge: Safe Expeditious Whole-Body Control of Mobile Manipulators for Collision Avoidance* | 9-DoF 轮式移动操作臂在全身空间避开摆动杆、飞球等快速障碍，同时到达目标并规避自碰撞。 | 两层优化：CBF 生成初始安全约束；Adaptive Cyclic Inequality (ACI) 结合障碍位置、速度和运动方向，消除传统 CBF 的伪平衡问题；最终由 QP 联合分配底盘/机械臂运动。 | 与 `Keep it Upright` 的“飞来物体避障”实验最相近，但不包含托盘物体平衡约束；适合作为 MPC 外层快速安全滤波或替代反应层。 | 2026-03 在线发表；预印本 2024-09-23 | 论文开放获取；未发现公开代码。[论文](https://arxiv.org/abs/2409.14775)；[期刊页](https://doi.org/10.1016/j.birob.2026.100301) |
+| Benzi, Mancus & Secchi, *Whole-Body Control of a Mobile Manipulator for Passive Collaborative Transportation* | 人与移动操作臂共同搬运不便搬运的载荷；移动底盘和机械臂均作为全身模型的一部分参与接触交互。 | 基于扩展 Jacobian 的全身速度控制与被动性方法；在线调节交互参数，同时保持闭环鲁棒稳定。 | 同样是“运输任务 + 全身联合控制”，但对象由人协作接触而非托盘非抓取平衡；核心是柔顺/被动性，不是 MPC。 | 2022-10，IFAC SYROCO；论文集 2023 | 预印本公开；未发现公开代码。[论文](https://arxiv.org/abs/2211.13680) |
+| Patra, Sinha & Guha, *Motion Planning of Nonholonomic Cooperative Mobile Manipulators* | 多个非完整轮式移动操作臂协同运输物体，在静态和动态障碍中联合规划底盘和机械臂轨迹。 | 离线以 visibility vertices 生成全局路径及凸安全区域；在线 NMPC 同时考虑底盘、手臂、运动学/动力学约束和障碍。 | 将单机器人 waiter’s problem 扩展为多机协同刚体运输；仍是显式约束的预测联合规划，但不是托盘非抓取任务。 | 2025-02-08，arXiv 预印本 | 未发现公开代码。[论文](https://arxiv.org/abs/2502.05462) |
+
+### 针对“托盘运输 + 动态避障”的实现建议
+
+1. 以 `upright` 为主线复现已公开的约束 MPC，并先复现实验中的托盘平衡与静态障碍场景。
+2. 需要处理未知载荷时，直接对接同仓库支持的 2025 鲁棒惯性约束，而不是只靠降低速度或增大摩擦安全裕度。
+3. 需要应对飞来物、人员或快速移动障碍时，可把 Chen et al. 的 CBF + ACI 视为 MPC 之外的高速安全过滤层；这需要重新处理两个优化器之间的可行性和优先级，不能直接串联使用。
+4. 如果实时性优先于长时域预测，可将 Haviland et al. 的全身 QP 作为局部跟踪层，再由高层 MPC 给出末端或底盘参考。
