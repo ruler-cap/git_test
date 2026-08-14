@@ -1,0 +1,73 @@
+SuperDec ShapeNet runtime benchmark
+=======================================
+Success: 30/30
+Failures: 0
+
+Settings
+{
+  "formal_sample_count": 30,
+  "input_points": 4096,
+  "checkpoint": "checkpoints/shapenet/ckpt.pt",
+  "dtype": "float32",
+  "max_primitives": 16,
+  "exist_threshold": 0.5,
+  "mesh_resolution": 30,
+  "lm_lambda": 0.1,
+  "lm_steps": 5,
+  "lm_atol": 1e-08,
+  "lm_rtol": 1e-08,
+  "lm_early_stop": true,
+  "lm_early_stop_note": "Current LMOptimizer does not use atol/rtol/early_stop; it always executes num_steps.",
+  "network_warmups": 10,
+  "lm_warmups": 2,
+  "seed": 42,
+  "visualization_orientation": "ShapeNet Y-up rotated +90 degrees about X to display as Z-up",
+  "model": {
+    "transformer_layers": 3,
+    "queries": 16,
+    "attention_heads": 1,
+    "feature_dimension": 128,
+    "pvconv_voxel_resolutions": [
+      32,
+      16,
+      16
+    ]
+  },
+  "training_loss_n_samples": 500,
+  "training_loss_note": "loss.n_samples affects only training surface-sampling loss, not this inference.",
+  "mesh_resolution_note": "Mesh resolution changes output mesh/image detail, not neural-network prediction accuracy."
+}
+
+Hardware
+{
+  "cpu": "x86_64",
+  "physical_cpu_cores": null,
+  "logical_cpu_cores": 24,
+  "memory_bytes": null,
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "gpu_memory_bytes": 16585719808,
+  "compute_capability": "12.0",
+  "driver_version": "580.173.02",
+  "os": "Linux-5.15.0-187-generic-x86_64-with-glibc2.35",
+  "kernel": "5.15.0-187-generic",
+  "conda_environment": "superdec",
+  "python": "3.10.20",
+  "pytorch": "2.13.0+cu130",
+  "cuda_runtime": "13.0",
+  "cudnn": 92000,
+  "device": "cuda:0"
+}
+
+Timing summary (ms)
+network_inference_ms
+  mean=5.899, median=5.840, p95=6.431, min=5.558, max=6.615, stddev=0.280
+lm_optimization_ms
+  mean=117.418, median=107.281, p95=185.976, min=106.391, max=231.918, stddev=29.268
+model_total_ms
+  mean=123.317, median=113.195, p95=191.755, min=112.068, max=237.621, stddev=29.223
+pointcloud_to_result_ms
+  mean=135.912, median=122.632, p95=228.231, min=116.274, max=243.207, stddev=33.883
+file_to_result_ms
+  mean=136.537, median=123.248, p95=228.849, min=116.890, max=243.776, stddev=33.883
+render_ms
+  mean=970.011, median=881.380, p95=1943.883, min=240.912, max=2686.090, stddev=508.070
